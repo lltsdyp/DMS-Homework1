@@ -1,7 +1,7 @@
 # bookstore
 
-> 作业内容说明和要求文档为 Project_1/README.md
-> 	作业源码目录为 Project_1/bookstore
+> 作业内容说明和要求文档为 README.md
+> 	作业源码目录为 bookstore
 
 ## 功能
 
@@ -66,8 +66,8 @@ bookstore
 
 ## 代码仓库
 
-从 [CDMS.Xuan_ZHOU.2024Fall.DaSE - CDMS.Xuan_ZHOU.2024Fall.DaSE - 水杉码园 (shuishan.net.cn)](https://gitea.shuishan.net.cn/51275903093/CDMS.Xuan_ZHOU.2024Fall.DaSE/_upload/master/project1) 获取代码，并以 bookstore 文件夹为根目录打开
-代码。 请大家从公共仓库 clone 到自己仓库下，然后继续作业。
+从 [51275903030/CDMS.Xuan_ZHOU.2025Spring.DaSE: 当代数据管理系统第一次大作业 - CDMS.Xuan_ZHOU.2025Spring.DaSE - 水杉码园 (shuishan.net.cn)](https://gitea.shuishan.net.cn/51275903030/CDMS.Xuan_ZHOU.2025Spring.DaSE)获取代码，并以 bookstore 文件夹为根目录打开
+代码。 请大家从公共仓库 clone 到自己仓库（最后提交自己仓库的链接）下，然后继续作业。
 
 
 ## 安装配置
@@ -161,9 +161,9 @@ Windows 执行测试参考视频：https://www.bilibili.com/video/BV1Lu4y1h7Pn/
 
 ## 验收与考核准测
 
-- 提交 **代码+报告** 压缩包到 **作业提交入口**
-- 命名规则：2024_ECNU_PJ1_第几组(.zip)
-- 提交截止日期：**2024.10.31 23:59**
+- 提交 **报告(将仓库链接贴在报告最后)** pdf格式 到 **作业提交入口**
+- 命名规则：2025_ECNU_PJ1_第几组(.pdf)
+- 提交截止日期：**2025.4.3 23:59**
 
 
 考核标准：
