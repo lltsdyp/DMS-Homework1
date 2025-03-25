@@ -22,9 +22,9 @@ EXPOSE 27017
 
 # add user and initialize mongodb
 RUN mkdir -p /data/db /var/log/mongodb &&\
-    chown -R mongodb:mongodb /data/db /var/log/mongodb &&\
     useradd -ms /bin/bash -G sudo user &&\
-    passwd -d user
+    passwd -d user &&\
+    chown -R user:user /data/db /var/log/mongodb
 
 COPY docker/mongod.conf /etc/mongod.conf
 
