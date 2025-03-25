@@ -1,7 +1,9 @@
 import jwt
 import time
 import logging
-import sqlite3 as sqlite
+# import sqlite3 as sqlite
+import pymongo
+import pymongo.errors
 from be.model import error
 from be.model import db_conn
 
@@ -54,123 +56,213 @@ class User(db_conn.DBConn):
             return False
 
     def register(self, user_id: str, password: str):
+        # try:
+        #     terminal = "terminal_{}".format(str(time.time()))
+        #     token = jwt_encode(user_id, terminal)
+        #     self.conn.execute(
+        #         "INSERT into user(user_id, password, balance, token, terminal) "
+        #         "VALUES (?, ?, ?, ?, ?);",
+        #         (user_id, password, 0, token, terminal),
+        #     )
+        #     self.conn.commit()
+        # except sqlite.Error:
+        #     return error.error_exist_user_id(user_id)
+        # return 200, "ok"
+        terminal = "terminal_{}".format(str(time.time()))
+        token = jwt_encode(user_id, terminal)
+        new_doc={
+                "user_id": user_id,
+                "password": password,
+                "balance": 0,
+                "token": token,
+                "terminal": terminal
+        }
         try:
-            terminal = "terminal_{}".format(str(time.time()))
-            token = jwt_encode(user_id, terminal)
-            self.conn.execute(
-                "INSERT into user(user_id, password, balance, token, terminal) "
-                "VALUES (?, ?, ?, ?, ?);",
-                (user_id, password, 0, token, terminal),
-            )
-            self.conn.commit()
-        except sqlite.Error:
+            self.store_collections.user_collection.insert_one(new_doc)
+        except pymongo.errors.DuplicateKeyError:
             return error.error_exist_user_id(user_id)
-        return 200, "ok"
+
+        return 200,"ok"
 
     def check_token(self, user_id: str, token: str) -> (int, str):
-        cursor = self.conn.execute("SELECT token from user where user_id=?", (user_id,))
-        row = cursor.fetchone()
-        if row is None:
+        # cursor = self.conn.execute("SELECT token from user where user_id=?", (user_id,))
+        # row = cursor.fetchone()
+        # if row is None:
+        #     return error.error_authorization_fail()
+        # db_token = row[0]
+        # if not self.__check_token(user_id, db_token, token):
+        #     return error.error_authorization_fail()
+        # return 200, "ok"
+        result = self.store_collections.user_collection.find_one({"user_id":user_id})
+        if result is None:
             return error.error_authorization_fail()
-        db_token = row[0]
+        
+        db_token = result.get("token","")
         if not self.__check_token(user_id, db_token, token):
             return error.error_authorization_fail()
-        return 200, "ok"
+        return 200,"ok"
 
     def check_password(self, user_id: str, password: str) -> (int, str):
-        cursor = self.conn.execute(
-            "SELECT password from user where user_id=?", (user_id,)
-        )
-        row = cursor.fetchone()
-        if row is None:
-            return error.error_authorization_fail()
+        # cursor = self.conn.execute(
+        #     "SELECT password from user where user_id=?", (user_id,)
+        # )
+        # row = cursor.fetchone()
+        # if row is None:
+        #     return error.error_authorization_fail()
 
-        if password != row[0]:
-            return error.error_authorization_fail()
+        # if password != row[0]:
+        #     return error.error_authorization_fail()
 
-        return 200, "ok"
+        # return 200, "ok"
+        result = self.store_collections.user_collection.find_one({"user_id":user_id})
+        if result is None:
+            return error.error_authorization_fail()
+        
+        if password != result.get("password",""):
+            return error.error_authorization_fail()
+        
+        return 200,"ok"
 
     def login(self, user_id: str, password: str, terminal: str) -> (int, str, str):
-        token = ""
-        try:
-            code, message = self.check_password(user_id, password)
-            if code != 200:
-                return code, message, ""
+        # token = ""
+        # try:
+        #     code, message = self.check_password(user_id, password)
+        #     if code != 200:
+        #         return code, message, ""
 
-            token = jwt_encode(user_id, terminal)
-            cursor = self.conn.execute(
-                "UPDATE user set token= ? , terminal = ? where user_id = ?",
-                (token, terminal, user_id),
-            )
-            if cursor.rowcount == 0:
-                return error.error_authorization_fail() + ("",)
-            self.conn.commit()
-        except sqlite.Error as e:
+        #     token = jwt_encode(user_id, terminal)
+        #     cursor = self.conn.execute(
+        #         "UPDATE user set token= ? , terminal = ? where user_id = ?",
+        #         (token, terminal, user_id),
+        #     )
+        #     if cursor.rowcount == 0:
+        #         return error.error_authorization_fail() + ("",)
+        #     self.conn.commit()
+        # except sqlite.Error as e:
+        #     return 528, "{}".format(str(e)), ""
+        # except BaseException as e:
+        #     return 530, "{}".format(str(e)), ""
+        # return 200, "ok", token
+
+        code,message=self.check_password(user_id, password)
+        if code != 200:
+            return code, message,""
+        
+        token = jwt_encode(user_id, terminal)
+        try:
+            result = self.store_collections.user_collection.update_one({"user_id":user_id},{"$set":{"token":token,"terminal":terminal}})
+            if self.store_collections.user_collection.find_one({"user_id":user_id}) is None:
+                return error.error_authorization_fail()+("",)
+        except pymongo.errors.PyMongoError as e:
             return 528, "{}".format(str(e)), ""
         except BaseException as e:
             return 530, "{}".format(str(e)), ""
-        return 200, "ok", token
+        return 200,"ok",token
 
-    def logout(self, user_id: str, token: str) -> bool:
+    def logout(self, user_id: str, token: str) -> (int, str):
+        # try:
+        #     code, message = self.check_token(user_id, token)
+        #     if code != 200:
+        #         return code, message
+
+        #     terminal = "terminal_{}".format(str(time.time()))
+        #     dummy_token = jwt_encode(user_id, terminal)
+
+        #     cursor = self.conn.execute(
+        #         "UPDATE user SET token = ?, terminal = ? WHERE user_id=?",
+        #         (dummy_token, terminal, user_id),
+        #     )
+        #     if cursor.rowcount == 0:
+        #         return error.error_authorization_fail()
+
+        #     self.conn.commit()
+        # except sqlite.Error as e:
+        #     return 528, "{}".format(str(e))
+        # except BaseException as e:
+        #     return 530, "{}".format(str(e))
+        # return 200, "ok"
+        code, message = self.check_token(user_id, token)
+        if code != 200:
+            return code, message
+        
+        terminal = "terminal_{}".format(str(time.time()))
+        dummy_token = jwt_encode(user_id, terminal)
+
         try:
-            code, message = self.check_token(user_id, token)
-            if code != 200:
-                return code, message
-
-            terminal = "terminal_{}".format(str(time.time()))
-            dummy_token = jwt_encode(user_id, terminal)
-
-            cursor = self.conn.execute(
-                "UPDATE user SET token = ?, terminal = ? WHERE user_id=?",
-                (dummy_token, terminal, user_id),
-            )
-            if cursor.rowcount == 0:
+            result = self.store_collections.user_collection.update_one({"user_id":user_id},{"$set":{"token":dummy_token,"terminal":terminal}})
+            if self.store_collections.user_collection.find_one({"user_id":user_id}) is None:
                 return error.error_authorization_fail()
-
-            self.conn.commit()
-        except sqlite.Error as e:
+        except pymongo.errors.PyMongoError as e:
             return 528, "{}".format(str(e))
         except BaseException as e:
             return 530, "{}".format(str(e))
-        return 200, "ok"
+        return 200,"ok"            
 
     def unregister(self, user_id: str, password: str) -> (int, str):
-        try:
-            code, message = self.check_password(user_id, password)
-            if code != 200:
-                return code, message
+        # try:
+        #     code, message = self.check_password(user_id, password)
+        #     if code != 200:
+        #         return code, message
 
-            cursor = self.conn.execute("DELETE from user where user_id=?", (user_id,))
-            if cursor.rowcount == 1:
-                self.conn.commit()
-            else:
+        #     cursor = self.conn.execute("DELETE from user where user_id=?", (user_id,))
+        #     if cursor.rowcount == 1:
+        #         self.conn.commit()
+        #     else:
+        #         return error.error_authorization_fail()
+        # except sqlite.Error as e:
+        #     return 528, "{}".format(str(e))
+        # except BaseException as e:
+        #     return 530, "{}".format(str(e))
+        # return 200, "ok"
+        code,message=self.check_password(user_id, password)
+        if code != 200:
+            return code, message
+        
+        try:
+            result = self.store_collections.user_collection.delete_one({"user_id":user_id})
+            if self.store_collections.user_collection.find_one({"user_id":user_id}) is not None:
                 return error.error_authorization_fail()
-        except sqlite.Error as e:
+        except pymongo.errors.PyMongoError as e:
             return 528, "{}".format(str(e))
         except BaseException as e:
             return 530, "{}".format(str(e))
-        return 200, "ok"
+        return 200,"ok"
 
     def change_password(
         self, user_id: str, old_password: str, new_password: str
     ) -> bool:
+        # try:
+        #     code, message = self.check_password(user_id, old_password)
+        #     if code != 200:
+        #         return code, message
+
+        #     terminal = "terminal_{}".format(str(time.time()))
+        #     token = jwt_encode(user_id, terminal)
+        #     cursor = self.conn.execute(
+        #         "UPDATE user set password = ?, token= ? , terminal = ? where user_id = ?",
+        #         (new_password, token, terminal, user_id),
+        #     )
+        #     if cursor.rowcount == 0:
+        #         return error.error_authorization_fail()
+
+        #     self.conn.commit()
+        # except sqlite.Error as e:
+        #     return 528, "{}".format(str(e))
+        # except BaseException as e:
+        #     return 530, "{}".format(str(e))
+        # return 200, "ok"
+        code, message = self.check_password(user_id, old_password)
+        if code != 200:
+            return code, message
+        
+        terminal = "terminal_{}".format(str(time.time()))
+        token = jwt_encode(user_id, terminal)
         try:
-            code, message = self.check_password(user_id, old_password)
-            if code != 200:
-                return code, message
-
-            terminal = "terminal_{}".format(str(time.time()))
-            token = jwt_encode(user_id, terminal)
-            cursor = self.conn.execute(
-                "UPDATE user set password = ?, token= ? , terminal = ? where user_id = ?",
-                (new_password, token, terminal, user_id),
-            )
-            if cursor.rowcount == 0:
+            result = self.store_collections.user_collection.update_one({"user_id":user_id},{"$set":{"password":new_password,"token":token,"terminal":terminal}})
+            if self.store_collections.user_collection.find_one({"user_id":user_id}) is None:
                 return error.error_authorization_fail()
-
-            self.conn.commit()
-        except sqlite.Error as e:
+        except pymongo.errors.PyMongoError as e:
             return 528, "{}".format(str(e))
         except BaseException as e:
             return 530, "{}".format(str(e))
-        return 200, "ok"
+        return 200,"ok"
