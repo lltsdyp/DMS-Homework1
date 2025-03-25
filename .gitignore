@@ -1,0 +1,7 @@
+*.db
+*.log
+*.DS_Store
+*.coverage
+
+*_cache/
+__pycache__/
