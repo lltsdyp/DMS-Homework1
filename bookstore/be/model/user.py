@@ -78,7 +78,7 @@ class User(db_conn.DBConn):
                 "terminal": terminal
         }
         try:
-            self.store_collections.user_collection.insert_one(new_doc)
+            self.store_instance.user_collection.insert_one(new_doc)
         except pymongo.errors.DuplicateKeyError:
             return error.error_exist_user_id(user_id)
 
@@ -93,7 +93,7 @@ class User(db_conn.DBConn):
         # if not self.__check_token(user_id, db_token, token):
         #     return error.error_authorization_fail()
         # return 200, "ok"
-        result = self.store_collections.user_collection.find_one({"user_id":user_id})
+        result = self.store_instance.user_collection.find_one({"user_id":user_id})
         if result is None:
             return error.error_authorization_fail()
         
@@ -114,7 +114,7 @@ class User(db_conn.DBConn):
         #     return error.error_authorization_fail()
 
         # return 200, "ok"
-        result = self.store_collections.user_collection.find_one({"user_id":user_id})
+        result = self.store_instance.user_collection.find_one({"user_id":user_id})
         if result is None:
             return error.error_authorization_fail()
         
@@ -150,8 +150,8 @@ class User(db_conn.DBConn):
         
         token = jwt_encode(user_id, terminal)
         try:
-            result = self.store_collections.user_collection.update_one({"user_id":user_id},{"$set":{"token":token,"terminal":terminal}})
-            if self.store_collections.user_collection.find_one({"user_id":user_id}) is None:
+            result = self.store_instance.user_collection.update_one({"user_id":user_id},{"$set":{"token":token,"terminal":terminal}})
+            if self.store_instance.user_collection.find_one({"user_id":user_id}) is None:
                 return error.error_authorization_fail()+("",)
         except pymongo.errors.PyMongoError as e:
             return 528, "{}".format(str(e)), ""
@@ -189,8 +189,8 @@ class User(db_conn.DBConn):
         dummy_token = jwt_encode(user_id, terminal)
 
         try:
-            result = self.store_collections.user_collection.update_one({"user_id":user_id},{"$set":{"token":dummy_token,"terminal":terminal}})
-            if self.store_collections.user_collection.find_one({"user_id":user_id}) is None:
+            result = self.store_instance.user_collection.update_one({"user_id":user_id},{"$set":{"token":dummy_token,"terminal":terminal}})
+            if self.store_instance.user_collection.find_one({"user_id":user_id}) is None:
                 return error.error_authorization_fail()
         except pymongo.errors.PyMongoError as e:
             return 528, "{}".format(str(e))
@@ -219,8 +219,8 @@ class User(db_conn.DBConn):
             return code, message
         
         try:
-            result = self.store_collections.user_collection.delete_one({"user_id":user_id})
-            if self.store_collections.user_collection.find_one({"user_id":user_id}) is not None:
+            result = self.store_instance.user_collection.delete_one({"user_id":user_id})
+            if self.store_instance.user_collection.find_one({"user_id":user_id}) is not None:
                 return error.error_authorization_fail()
         except pymongo.errors.PyMongoError as e:
             return 528, "{}".format(str(e))
@@ -258,8 +258,8 @@ class User(db_conn.DBConn):
         terminal = "terminal_{}".format(str(time.time()))
         token = jwt_encode(user_id, terminal)
         try:
-            result = self.store_collections.user_collection.update_one({"user_id":user_id},{"$set":{"password":new_password,"token":token,"terminal":terminal}})
-            if self.store_collections.user_collection.find_one({"user_id":user_id}) is None:
+            result = self.store_instance.user_collection.update_one({"user_id":user_id},{"$set":{"password":new_password,"token":token,"terminal":terminal}})
+            if self.store_instance.user_collection.find_one({"user_id":user_id}) is None:
                 return error.error_authorization_fail()
         except pymongo.errors.PyMongoError as e:
             return 528, "{}".format(str(e))

@@ -3,6 +3,7 @@ import os
 import sqlite3 as sqlite
 import threading
 import pymongo
+import pymongo.database
 
 
 class Store:
@@ -81,6 +82,6 @@ def get_db_conn():
     global database_instance
     return database_instance.client
 
-def get_collections():
+def get_instance() -> Store:
     global database_instance
-    return database_instance.collections
+    return database_instance
