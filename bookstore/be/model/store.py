@@ -1,6 +1,6 @@
 import logging
 import os
-import sqlite3 as sqlite
+# import sqlite3 as sqlite
 import threading
 import pymongo
 import pymongo.database
@@ -70,7 +70,7 @@ class Store:
 
 database_instance: Store = None
 # global variable for database sync
-# init_completed_event = threading.Event()
+init_completed_event = threading.Event()
 
 
 def init_database(db_path):
