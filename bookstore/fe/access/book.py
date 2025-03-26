@@ -4,7 +4,6 @@ import random
 import base64
 import simplejson as json
 
-
 class Book:
     id: str
     title: str
@@ -33,7 +32,9 @@ class BookDB:
     def __init__(self, large: bool = False):
         parent_path = os.path.dirname(os.path.dirname(__file__))
         self.db_s = os.path.join(parent_path, "data/book.db")
+        self.db_s = "/home/user/bookstore/fe/data/book.db"
         self.db_l = os.path.join(parent_path, "data/book_lx.db")
+        self.db_l=self.db_s
         if large:
             self.book_db = self.db_l
         else:

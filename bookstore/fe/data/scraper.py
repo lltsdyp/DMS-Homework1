@@ -64,6 +64,28 @@ user_agent = [
     "Mobile/10A5376e Safari/8536.25",
 ]
 
+def delete_all_tables(db_path):
+    try:
+        # 连接到 SQLite 数据库
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+
+        # 获取所有表名
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        tables = cursor.fetchall()
+
+        # 遍历并删除每个表
+        for table in tables:
+            table_name = table[0]
+            print(f"Deleting table: {table_name}")
+            cursor.execute(f"DROP TABLE IF EXISTS {table_name};")
+
+        # 提交更改并关闭连接
+        conn.commit()
+        conn.close()
+        print("All tables have been deleted successfully.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
 def get_user_agent():
     headers = {"User-Agent": random.choice(user_agent)}
@@ -76,11 +98,11 @@ class Scraper:
     page: int
 
     def __init__(self):
-        self.database = "book.db"
+        self.database = "/home/user/bookstore/fe/data/book.db"
         self.tag = ""
         self.page = 0
         self.pattern_number = re.compile(r"\d+\.?\d*")
-        logging.basicConfig(filename="scraper.log", level=logging.ERROR)
+        logging.basicConfig(filename="scraper.log", level=logging.INFO)
 
     def get_current_progress(self) -> ():
         conn = sqlite3.connect(self.database)
@@ -113,6 +135,7 @@ class Scraper:
         return True
 
     def create_tables(self):
+        delete_all_tables(self.database)
         conn = sqlite3.connect(self.database)
         try:
             conn.execute("CREATE TABLE tags (tag TEXT PRIMARY KEY)")
@@ -152,16 +175,13 @@ class Scraper:
         r.encoding = "utf-8"
         h: etree.ElementBase = etree.HTML(r.text)
         tags: [] = h.xpath(
-            '/html/body/div[@id="wrapper"]/div[@id="content"]'
-            '/div[@class="grid-16-8 clearfix"]/div[@class="article"]'
-            '/div[@class=""]/div[@class="indent tag_cloud"]'
-            "/table/tbody/tr/td/a/@href"
-        )
+            '//*[@id="content"]/div/div[1]/div[2]/div[1]/table/tbody/tr[1]/td[1]/a'
+        ) # 已修改，想爬更多的tag修改它
         conn = sqlite3.connect(self.database)
         c = conn.cursor()
         try:
             for tag in tags:
-                t: str = tag.strip("/tag")
+                t: str = tag.attrib["href"].strip("/tag")
                 c.execute("INSERT INTO tags VALUES ('{}')".format(t))
             c.close()
             conn.commit()
@@ -180,25 +200,18 @@ class Scraper:
         r.encoding = "utf-8"
         h: etree.Element = etree.HTML(r.text)
 
-        li_list: [] = h.xpath(
-            '/html/body/div[@id="wrapper"]/div[@id="content"]'
-            '/div[@class="grid-16-8 clearfix"]'
-            '/div[@class="article"]/div[@id="subject_list"]'
-            '/ul/li/div[@class="info"]/h2/a/@href'
+        li_list = h.xpath(
+            # '/html/body/div[@id="wrapper"]/div[@id="content"]'
+            # '/div[@class="grid-16-8 clearfix"]'
+            # '/div[@class="article"]/div[@id="subject_list"]'
+            # '/ul/li/div[@class="info"]/h2/a/@href'
+            '//*[@id="subject_list"]/ul/li[*]/div[@class="info"]/h2/a/@href'
         )
-        next_page = h.xpath(
-            '/html/body/div[@id="wrapper"]/div[@id="content"]'
-            '/div[@class="grid-16-8 clearfix"]'
-            '/div[@class="article"]/div[@id="subject_list"]'
-            '/div[@class="paginator"]/span[@class="next"]/a[@href]'
-        )
-        has_next = True
-        if len(next_page) == 0:
-            has_next = False
         if len(li_list) == 0:
             return False
 
         for li in li_list:
+            logging.info("start to grab book {}".format(li))
             li.strip("")
             book_id = li.strip("/").split("/")[-1]
             try:
@@ -209,7 +222,8 @@ class Scraper:
                 logging.error(
                     logging.error("error when scrape {}, {}".format(book_id, str(e)))
                 )
-        return has_next
+        # return True
+        return False #这里用来调试，我们只爬取第一页的数据以加快速度，正式测试可以将上一行取消注释
 
     def get_tag_list(self) -> [str]:
         ret = []
