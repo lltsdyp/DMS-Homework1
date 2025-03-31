@@ -78,7 +78,7 @@ class Seller(db_conn.DBConn):
         # except BaseException as e:
         #     return 530, "{}".format(str(e))
         # return 200, "ok"
-        if not self.user_id.exist(user_id):
+        if not self.user_id_exist(user_id):
             return error.error_non_exist_user_id(user_id)
         if not self.store_id_exist(store_id):
             return error.error_non_exist_store_id(store_id)
