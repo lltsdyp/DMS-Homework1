@@ -38,5 +38,5 @@ def add_funds():
     password = request.json.get("password")
     add_value = request.json.get("add_value")
     b = Buyer()
-    code, message = b.add_funds(user_id, password, add_value)
+    code, message,_ = b.add_funds(user_id, password, add_value)
     return jsonify({"message": message}), code
