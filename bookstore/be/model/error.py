@@ -50,6 +50,7 @@ def error_stock_level_low(book_id):
 
 
 def error_invalid_order_id(order_id):
+    # raise RuntimeError("Invalid")
     return 518, error_code[518].format(order_id)
 
 

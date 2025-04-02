@@ -116,6 +116,7 @@ class Buyer(db_conn.DBConn):
                     "user_id":user_id
                 }
             )
+            order_id=uid
         except pymongo.errors.PyMongoError as e:
             logging.info("528, {}".format(str(e)))
             return 528, "{}".format(str(e)), ""
@@ -218,27 +219,27 @@ class Buyer(db_conn.DBConn):
         # return 200, "ok"
         try:
             order = self.store_instance.new_order_collection.find_one({"order_id": order_id})
-            if not order:
-                return error.error_invalid_order_id(order_id) + ("",)
+            if order is None:
+                return error.error_invalid_order_id(order_id) 
 
             buyer_id = order["user_id"]
             store_id = order["store_id"]
 
             if buyer_id != user_id:
-                return error.error_authorization_fail() + ("",)
+                return error.error_authorization_fail() 
 
-            user = self.user_instance.user_collection.find_one({"user_id": buyer_id})
+            user = self.store_instance.user_collection.find_one({"user_id": buyer_id})
             if not user:
-                return error.error_non_exist_user_id(buyer_id) + ("",)
+                return error.error_non_exist_user_id(buyer_id) 
             balance = user["balance"]
             if password != user.get("password"):
-                return error.error_authorization_fail() + ("",)
+                return error.error_authorization_fail() 
 
-            store_info = self.user_instance.user_store_collection.find_one(
+            store_info = self.store_instance.user_store_collection.find_one(
                 {"store_id": store_id}
             )
             if not store_info:
-                return error.error_non_exist_store_id(store_id) + ("",)
+                return error.error_non_exist_store_id(store_id) 
             seller_id = store_info["user_id"]
 
             details = (
@@ -257,25 +258,25 @@ class Buyer(db_conn.DBConn):
                 "balance": {"$gte": total_price},
             }
             buyer_update = {"$inc": {"balance": -total_price}}
-            buyer_result = self.user_instance.user_collection.update_one(
+            buyer_result = self.store_instance.user_collection.update_one(
                 buyer_filter, buyer_update
             )
             if buyer_result.modified_count != 1:
-                return error.error_not_sufficient_funds(order_id) + ("",)
+                return error.error_not_sufficient_funds(order_id) 
 
             seller_filter = {"user_id": seller_id}
             seller_update = {"$inc": {"balance": total_price}}
-            seller_result = self.user_instance.user_collection.update_one(
+            seller_result = self.store_instance.user_collection.update_one(
                 seller_filter, seller_update
             )
             if seller_result.modified_count != 1:
-                return error.error_non_exist_user_id(seller_id) + ("",)
+                return error.error_non_exist_user_id(seller_id) 
 
             delete_order_result = self.store_instance.new_order_collection.delete_one(
                 {"order_id": order_id}
             )
             if delete_order_result.deleted_count != 1:
-                return error.error_invalid_order_id(order_id) + ("",)
+                return error.error_invalid_order_id(order_id) 
 
             delete_detail_result = (
                 self.store_instance.new_order_detail_collection.delete_many(
@@ -283,14 +284,14 @@ class Buyer(db_conn.DBConn):
                 )
             )
             if delete_detail_result.deleted_count < 1:
-                return error.error_invalid_order_id(order_id) + ("",)
+                return error.error_invalid_order_id(order_id) 
 
         except pymongo.errors.PyMongoError as e:
             return 528, f"MongoDB error: {str(e)}", ""
-        except BaseException as e:
-            return 530, f"Unexpected error: {str(e)}", ""
+        # except BaseException as e:
+        #     return 530, f"Unexpected error: {str(e)}", ""
 
-        return 200, "ok", ""
+        return 200, "ok"
 
     def add_funds(self, user_id, password, add_value) -> (int, str):
         # try:
@@ -319,7 +320,7 @@ class Buyer(db_conn.DBConn):
 
         # return 200, "ok"
         try:
-            user = self.user_instance.user_collection.find_one({"user_id": user_id})
+            user = self.store_instance.user_collection.find_one({"user_id": user_id})
             if not user:
                 return error.error_non_exist_user_id(user_id) + ("",)
 
@@ -328,7 +329,7 @@ class Buyer(db_conn.DBConn):
 
             update_filter = {"user_id": user_id}
             update_operation = {"$inc": {"balance": add_value}}
-            result = self.user_instance.user_collection.update_one(update_filter, update_operation)
+            result = self.store_instance.user_collection.update_one(update_filter, update_operation)
 
             if result.modified_count != 1:
                 return error.error_non_exist_user_id(user_id) + ("",)

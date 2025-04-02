@@ -82,7 +82,7 @@ class Seller(db_conn.DBConn):
             return error.error_non_exist_user_id(user_id)
         if not self.store_id_exist(store_id):
             return error.error_non_exist_store_id(store_id)
-        if self.book_id_exist(store_id, book_id):
+        if not self.book_id_exist(store_id, book_id):
             return error.error_non_exist_book_id(book_id)
         
         try:
