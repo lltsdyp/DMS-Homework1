@@ -5,6 +5,7 @@ import json
 import logging
 
 import pymongo.errors
+from datetime import datetime, timedelta
 from be.model import db_conn
 from be.model import error
 
@@ -108,12 +109,17 @@ class Buyer(db_conn.DBConn):
                         "price":price
                     }
                 )
-            
+            #维护时间，方便后面判断超时
+            now_time = datetime.datetime.now()
+            #在new_order_collection增加三个字段，create_time和status
+            #status=0表示未支付，1表示已支付
             self.store_instance.new_order_collection.insert_one(
                 {
                     "order_id":uid,
                     "store_id":store_id,
-                    "user_id":user_id
+                    "user_id":user_id,
+                    'create_time':now_time,
+                    "status":0
                 }
             )
             order_id=uid
@@ -272,19 +278,27 @@ class Buyer(db_conn.DBConn):
             if seller_result.modified_count != 1:
                 return error.error_non_exist_user_id(seller_id) 
 
-            delete_order_result = self.store_instance.new_order_collection.delete_one(
+            #将删除订单改为修改订单状态
+            """ delete_order_result = self.store_instance.new_order_collection.delete_one(
                 {"order_id": order_id}
             )
             if delete_order_result.deleted_count != 1:
-                return error.error_invalid_order_id(order_id) 
-
-            delete_detail_result = (
+                return error.error_invalid_order_id(order_id) """ 
+            update_status_result = self.store_instance.new_order_collection.update_one(
+                {"order_id": order_id, "status": 0},
+                {"$set": {"status": 1}}
+            )
+            if update_status_result.modified_count != 1:
+                return error.error_invalid_order_id(order_id)
+            
+            # order_detail不可以删除的，在后续删除订单时，需要知道订单详情，所以这里不删除
+            """ delete_detail_result = (
                 self.store_instance.new_order_detail_collection.delete_many(
                     {"order_id": order_id}
                 )
             )
             if delete_detail_result.deleted_count < 1:
-                return error.error_invalid_order_id(order_id) 
+                return error.error_invalid_order_id(order_id)  """
 
         except pymongo.errors.PyMongoError as e:
             return 528, f"MongoDB error: {str(e)}", ""
@@ -340,3 +354,88 @@ class Buyer(db_conn.DBConn):
             return 530, f"Unexpected error: {str(e)}", ""
 
         return 200, "ok", ""
+    
+    #更改订单状态，status=2表示已发货
+    # 3表示已收货，已完成的订单
+    def receive_books(self, user_id: str, order_id: str) -> (int, str):
+        # 检查用户ID是否存在
+        if not self.user_id_exist(user_id):
+            return error.error_non_exist_user_id(user_id)
+        
+        #在new_order_collection中找到同时满足user_id和order_id同时满足的文档
+        result=self.store_instance.new_order_collection.find_one({
+            "order_id": order_id,
+            "user_id": user_id,
+            "status": 2
+        })
+        if result is None:
+            return error.error_invalid_order_id(order_id)
+        #将status改为3
+        try:
+            self.store_instance.new_order_collection.update_one({
+                "order_id": order_id,
+            }, {
+                "$set": {"status": 3}
+            })
+        except pymongo.errors.PyMongoError as e:
+            return 528, "{}".format(str(e))
+        except BaseException as e:
+            return 530, "{}".format(str(e))
+        return 200,"ok"
+    
+    def cancel_order(self, user_id: str, order_id: str) -> (int, str):
+        try:
+            #未付款
+            store_id = ""
+            result = self.store_instance.new_order_collection.find_one({
+                "order_id": order_id,
+                "user_id": user_id,
+                "status": 0
+            })
+            if result:
+                #不能删除订单，选择修改状态即可，保留订单历史
+                #self.store_instance.new_order_collection.delete_one({"order_id": order_id, "user_id": user_id, "status": 0})
+                store_id = result["store_id"]
+                
+            #已付款
+            else:
+                result = self.store_instance.new_order_collection.find_one({
+                    "$or": [
+                        {"order_id": order_id, "user_id": user_id, "status": 1},
+                        {"order_id": order_id, "user_id": user_id, "status": 2},
+                        {"order_id": order_id, "user_id": user_id, "status": 3},
+                    ]
+                })
+                if result:
+                    #恢复余额
+                        #找到卖家的user_id
+                    store_id = result["store_id"]
+                    result1 = self.store_instance.user_store_collection.find_one({"store_id": store_id})
+                    store_user_id = ""
+                    if result1:
+                        store_user_id = result1["user_id"]
+                    else:
+                        return error.error_non_exist_store_id(store_id)
+                    details = self.store_instance.new_order_detail_collection.find({"order_id": order_id})
+                    for detail in details:
+                        book_id = detail["book_id"]
+                        count = detail["count"]
+                        price = detail["price"]
+                        self.store_instance.user_collection.update_one({"user_id": user_id}, {"$inc": {"balance": price * count}})
+                        self.store_instance.user_collection.update_one({"user_id": store_user_id}, {"$inc": {"balance": -price * count}})
+                    #不能删除订单，选择修改状态即可，保留订单历史
+                    #self.store_instance.new_order_collection.delete_one({"order_id": order_id, "user_id": user_id})
+
+                else:
+                    return error.error_invalid_order_id(order_id)
+            #恢复库存
+            details = self.store_instance.new_order_detail_collection.find({"order_id": order_id})
+            for book in details:
+                book_id = book["book_id"]
+                count = book["count"]
+                self.store_instance.store_collection.update_one({"store_id": store_id, "book_id": book_id}, {"$inc": {"count": count}})
+            #修改订单状态，而不是删除订单，status=4表示取消的订单
+            self.store_instance.new_order_collection.update_one({"order_id": order_id, "user_id": user_id}, {"$set": {"status": 4}})
+        except BaseException as e:
+            return 528, "{}".format(str(e))
+        return 200, "ok"        
