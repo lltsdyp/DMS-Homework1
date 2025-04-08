@@ -61,7 +61,8 @@ class Store:
         self.user_store_collection.create_index([("user_id",1),("store_id",1)],unique=True)
         self.store_collection.create_index([("store_id",1),("book_id",1)],unique=True)
         self.new_order_collection.create_index([("order_id",1)],unique=True)
-        self.new_order_detail_collection.create_index([("order_id",1),("book_id",1)],unique=True)
+        #self.new_order_detail_collection.create_index([("order_id",1),("book_id",1)],unique=True) 
+        #这里的order_id应该不是唯一的，因为一个订单可以有多个商品！！！
 
 
     # def get_db_conn(self) -> sqlite.Connection:

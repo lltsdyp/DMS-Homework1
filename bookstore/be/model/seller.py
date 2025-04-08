@@ -130,3 +130,33 @@ class Seller(db_conn.DBConn):
         except BaseException as e:
             return 530, "{}".format(str(e))
         return 200,"ok"
+
+    #更改订单状态
+    # 1表示已支付，2表示已发货
+    def send_books(self, user_id: str, order_id: str) -> (int, str):
+        # 检查用户ID是否存在
+        if not self.user_id_exist(user_id):
+            return error.error_non_exist_user_id(user_id)
+        
+        #在new_order_collection中找到同时满足user_id和order_id同时满足的文档
+        result=self.store_instance.new_order_collection.find_one({
+            "order_id": order_id,
+            "user_id": user_id,
+            "status": 1
+        })
+        if result is None:
+            return error.error_invalid_order_id(order_id)
+        #将status改为2
+        try:
+            self.store_instance.new_order_collection.update_one({
+                "order_id": order_id,
+            }, {
+                "$set": {"status": 2}
+            })
+        except pymongo.errors.PyMongoError as e:
+            return 528, "{}".format(str(e))
+        except BaseException as e:
+            return 530, "{}".format(str(e))
+        return 200,"ok"
+        
+        
