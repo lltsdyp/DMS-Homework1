@@ -22,10 +22,9 @@ def search_books():
         filter.price[1]=request.json.get("filter").get("price_to")
         filter.publish_date[0]=request.json.get("filter").get("publish_date_from")
         filter.publish_date[1]=request.json.get("filter").get("publish_date_to")
-        filter.stock[0]=request.json.get("filter").get("stock_from")
-        filter.stock[1]=request.json.get("filter").get("stock_to")
+        filter.stock_level[0]=request.json.get("filter").get("stock_from")
+        filter.stock_level[1]=request.json.get("filter").get("stock_to")
         filter.store_id=request.json.get("filter").get("store_id")
     
     code,message,results=s.search(keyword,filter)
     return jsonify({"message": message, "count":len(results),"results": results}), code
-
