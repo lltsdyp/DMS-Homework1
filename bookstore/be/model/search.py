@@ -6,15 +6,29 @@ from be.model import db_conn
 
 class Filter:
     store_id: str
-    stock: []
+    stock_level: []
     publish_date: []
     pages: []
     price: []
     isbn: str
     
+    def to_json_dict(self):
+        return {
+            "store_id":self.store_id,
+            "stock_from":self.stock_level[0],
+            "stock_to":self.stock_level[1],
+            "publish_date_from":self.publish_date[0],
+            "publish_date_to":self.publish_date[1],
+            "pages_from":self.pages[0],
+            "pages_to":self.pages[1],
+            "price_from":self.price[0],
+            "price_to":self.price[1],
+            "isbn":self.isbn
+        }
+        
     def __init__(self):
         self.store_id = None
-        self.stock = [None,None]
+        self.stock_level = [None,None]
         self.publish_date = [None,None]
         self.pages = [None,None]
         self.price = [None,None]
@@ -57,12 +71,12 @@ class Search(db_conn.DBConn):
         if filter.store_id is not None:
             query["store_id"] = filter.store_id
 
-        if check_condition(filter.stock):
+        if check_condition(filter.stock_level):
             query["stock_level"]=dict()
-            if filter.stock[0] is not None:
-                query["stock_level"]["$gte"] = filter.stock[0]
-            if filter.stock[1] is not None:
-                query["stock_level"]["$lte"] = filter.stock[1]
+            if filter.stock_level[0] is not None:
+                query["stock_level"]["$gte"] = filter.stock_level[0]
+            if filter.stock_level[1] is not None:
+                query["stock_level"]["$lte"] = filter.stock_level[1]
                 
 
         # TBD

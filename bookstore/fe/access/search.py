@@ -10,11 +10,10 @@ class Search:
     def search_books(self,keyword: str,filter: Filter):
         json={
             "keyword":keyword,
-            "filter":filter.__dict__
+            "filter":filter.to_json_dict()
         }
         url=urljoin(self.url_prefix,"keyword")
         r=requests.post(url,json=json)
         if r.status_code!=200:
             raise RuntimeError(r.json()["message"])
         return r.status_code
-    
