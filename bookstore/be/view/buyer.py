@@ -49,3 +49,12 @@ def receive_books():
     b = Buyer()
     code, message = b.receive_books(user_id, order_id)
     return jsonify({"message": message}), code
+
+#cancel_order的接口
+@bp_buyer.route("/cancel_order", methods=["POST"])
+def cancel_order():
+    user_id = request.json.get("user_id")
+    order_id = request.json.get("order_id")
+    b = Buyer()
+    code, message = b.cancel_order(user_id, order_id)
+    return jsonify({"message": message}), code

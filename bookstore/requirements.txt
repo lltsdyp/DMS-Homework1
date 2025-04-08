@@ -9,3 +9,4 @@ pytest
 PyJWT
 requests
 pymongo
+apscheduler
