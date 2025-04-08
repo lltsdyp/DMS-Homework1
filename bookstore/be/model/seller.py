@@ -141,7 +141,6 @@ class Seller(db_conn.DBConn):
         #在new_order_collection中找到同时满足user_id和order_id同时满足的文档
         result=self.store_instance.new_order_collection.find_one({
             "order_id": order_id,
-            "user_id": user_id,
             "status": 1
         })
         if result is None:

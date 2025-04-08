@@ -8,6 +8,8 @@ import pymongo.errors
 from datetime import datetime, timedelta
 from be.model import db_conn
 from be.model import error
+from apscheduler.schedulers.background import BackgroundScheduler
+
 
 
 class Buyer(db_conn.DBConn):
@@ -82,7 +84,8 @@ class Buyer(db_conn.DBConn):
         try:
             for book_id, count in id_and_count:
                 book_query = self.store_instance.store_collection.find_one  ({"store_id":store_id,"book_id":book_id})
-                if not book_query:
+                if book_query is None:
+                #if book_query:
                     return error.error_non_exist_book_id(book_id) + (order_id,)
 
                 stock_level=book_query["stock_level"]
@@ -110,7 +113,8 @@ class Buyer(db_conn.DBConn):
                     }
                 )
             #维护时间，方便后面判断超时
-            now_time = datetime.datetime.now()
+            #now_time = datetime.datetime.now()
+            now_time = datetime.utcnow()
             #在new_order_collection增加三个字段，create_time和status
             #status=0表示未支付，1表示已支付
             self.store_instance.new_order_collection.insert_one(
@@ -439,3 +443,81 @@ class Buyer(db_conn.DBConn):
         except BaseException as e:
             return 528, "{}".format(str(e))
         return 200, "ok"        
+    
+    def check_hist_order(self, user_id: str):
+        try:
+            if not self.user_id_exist(user_id):
+                return error.error_non_exist_user_id(user_id)
+            
+            orders = self.store_instance.new_order_collection.find({"user_id": user_id})
+            if not orders.count() > 0:
+                return 200, "ok", "No orders found"
+            
+            order_list = []
+            for order in orders:
+                order_id = order["order_id"]
+                store_id = order["store_id"]
+                status = order["status"]
+                
+                details = list(self.store_instance.new_order_detail_collection.find({"order_id": order_id}))
+                if not details:
+                    continue  # 如果没有详情，跳过这个订单
+                
+                details_arr = []
+                for detail in details:
+                    details_arr.append({
+                        "book_id": detail["book_id"],
+                        "count": detail["count"],
+                        "price": detail["price"]
+                    })
+                
+                order_list.append({
+                    "order_id": order_id,
+                    "store_id": store_id,
+                    "status": status,
+                    "details": details_arr
+                })
+            
+            if not order_list:
+                return 200, "ok", "No orders found"
+            else:
+                return 200, "ok", order_list
+
+        except Exception as e:
+            return 528, str(e)
+    
+    def auto_cancel_order(self) -> (int, str):
+        try:
+            wait_time = 20  # 等待时间20s
+            interval = datetime.utcnow() - timedelta(seconds=wait_time) # UTC时间
+            orders_to_cancel = self.store_instance.new_order_collection.find({"create_time": {"$lte": interval}, "status": 0})
+            if orders_to_cancel:
+                for order in orders_to_cancel:
+                    order_id = order["order_id"]
+                    user_id = order["user_id"]
+                    store_id = order["store_id"]
+                    self.store_instance.new_order_collection.delete_one({"order_id": order_id, "status": 0})
+                    result = self.store_instance.new_order_detail_collection.find({"order_id": order_id})
+
+                    for book in result:
+                        book_id = book["book_id"]
+                        count = book["count"]
+                        result1 = self.store_instance.store_collection.update_one({"store_id": store_id, "books.book_id": book_id}, {"$inc": {"books.$.stock_level": count}})
+                        if result1.modified_count == 0:
+                            return error.error_stock_level_low(book_id) + (order_id,)
+
+                    self.conn.order_col.insert_one({"order_id": order_id, "user_id": user_id,"store_id": store_id, "status": 4})
+        except BaseException as e:
+            return 528, "{}".format(str(e))
+        return 200, "ok"
+
+    def is_order_cancelled(self, order_id: str) -> (int, str):
+        result = self.store_instance.new_order_collection.find_one({"order_id": order_id, "status": 4})
+        if result is None:
+            return error.error_auto_cancel_fail(order_id)
+        else:
+            return 200, "ok"
+
+scheduler = BackgroundScheduler()
+scheduler.add_job(Buyer().auto_cancel_order, 'interval', id='5_second_job', seconds=5)
+scheduler.start()
