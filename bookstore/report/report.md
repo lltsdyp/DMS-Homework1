@@ -135,9 +135,9 @@ wait_time = 20  # 等待时间20s
 
 ## 测试结果
 
-![test_case](/root/DMS-Homework1/bookstore/report/image/test_case.png)
+![test_case](./image/test_case.png)
 
-![pass](/root/DMS-Homework1/bookstore/report/image/pass.png)
+![pass](./image/pass.png)
 
 # 文档数据库设计
 
@@ -1091,7 +1091,7 @@ CMD ["/bin/bash"]
 
 我们在小组分工以后确定自己要完成的部分，然后每次完成一部分后就push到远程仓库中，然后merge以后再同步进行阶段测试，然后开始下一部分的开发
 git操作方便了bug出现以后的版本回退，以及同步的代码开发，减小沟通成本，冲突问题可以在merge的时候发现并调整
-![git_use](/root/DMS-Homework1/bookstore/report/image/git_use.png)
+![git_use](./image/git_use.png)
 
 # 仓库地址
 [lltsdyp/DMS-Homework1: 数据管理系统大作业1仓库](https://github.com/lltsdyp/DMS-Homework1)
