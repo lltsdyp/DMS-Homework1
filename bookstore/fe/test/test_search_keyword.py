@@ -27,3 +27,8 @@ class TestSearchKeyword:
         s=Search(conf.URL)
         code=s.search_books(self.books[0].title[:1],search.Filter())
         assert code==200
+    
+    def test_empty(self):
+        s=Search(conf.URL)
+        code=s.search_books("",search.Filter())
+        assert code==200

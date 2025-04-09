@@ -6,7 +6,7 @@
 
 #### URL
 
-POST http://[address]/search/keyword
+POST http://[address]/search/detailed
 
 #### Request
 Headers:
